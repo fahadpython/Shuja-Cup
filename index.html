@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
 
-<!-- 1. SUPABASE SCRIPT ADDED HERE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -270,13 +269,12 @@
 <script>
 (function(){
 
-  // 2. SUPABASE INITIALIZATION ADDED HERE
+  // SUPABASE INITIALIZATION
   // Replace these with your actual Supabase Project URL and Anon Key
   const supabaseUrl = 'https://qumtgjqboeebtthtafbj.supabase.co';
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1bXRnanFib2VlYnR0aHRhZmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMTczMDYsImV4cCI6MjEwMjU5MzMwNn0.uVlOjxxRu3SGS29EM99J0DeCsEDB6NuZVcFiG3v53FI';
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-  var STORAGE_KEY = 'tournament-state';
   var state = null;
   var isAdmin = false;
   var currentTab = 'fixtures';
@@ -306,29 +304,53 @@
     return s.slice(0,3) || '?';
   }
 
+  // SUPABASE LOAD STATE FUNCTION
   async function loadState(){
-    try{
-      var value = window.localStorage.getItem(STORAGE_KEY);
-      if(value){
-        state = JSON.parse(value);
+    try {
+      // Fetch row with id=1 from the tournament_data table
+      const { data, error } = await supabase
+        .from('tournament_data')
+        .select('state')
+        .eq('id', 1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 just means the row doesn't exist yet, which is fine for a brand new database.
+        console.error('Supabase load error:', error);
+      }
+
+      if (data && data.state) {
+        state = data.state;
+        // Safety checks to make sure the data structure is complete
         if(!state.teams) state.teams = [];
         state.teams.forEach(function(t){ if(typeof t.group !== 'string') t.group = ''; });
         if(!state.fixtures) state.fixtures = [];
         if(typeof state.pin !== 'string') state.pin = '';
       } else {
+        // If no data exists yet, start fresh
         state = defaultState();
       }
-    } catch(e){
+    } catch(e) {
+      console.error('Failed to connect to database', e);
       state = defaultState();
     }
   }
 
+  // SUPABASE SAVE STATE FUNCTION
   async function saveState(){
-    try{
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch(e){
-      console.error('Storage error', e);
-      openInfoModal("Couldn't save changes in this browser. Your data may not have been saved.");
+    try {
+      // Upsert (Update or Insert) the state into Row 1
+      const { error } = await supabase
+        .from('tournament_data')
+        .upsert({ id: 1, state: state });
+
+      if (error) {
+        console.error('Supabase save error:', error);
+        openInfoModal("Couldn't save changes to the database. Make sure Row Level Security (RLS) is turned off for testing.");
+      }
+    } catch(e) {
+      console.error('Network error', e);
+      openInfoModal("Couldn't save changes. Check your internet connection.");
     }
   }
 
