@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+
+<!-- 1. SUPABASE SCRIPT ADDED HERE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --pitch:#14532D;
+    --pitch-dark:#0B3320;
+    --turf-tint:#EAF3EA;
+    --ink:#0F231A;
+    --gold:#E8A33D;
+    --gold-dark:#9C6A1E;
+    --white:#FFFFFF;
+    --line:#D7E4D2;
+    --red:#C0392B;
+    --muted:#5B6B60;
+    --card:#FFFFFF;
+    --page:#F4F8F4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:var(--page);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    margin:0;
+  }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  a{color:inherit;}
+  button{ font-family:'Inter',sans-serif; cursor:pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+  }
+
+  /* Header */
+  .app-header{
+    background:linear-gradient(180deg, var(--pitch) 0%, var(--pitch-dark) 100%);
+    color:var(--white);
+    padding:20px 20px 0 20px;
+  }
+  .header-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    max-width:1000px;
+    margin:0 auto;
+    flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .ball-badge{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--gold); color:var(--pitch-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-weight:700; font-size:16px;
+    flex-shrink:0;
+  }
+  .tourney-name{
+    font-size:22px; font-weight:700; color:var(--white);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:400px;
+  }
+  .tourney-name-input{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.03em;
+    font-size:20px; font-weight:700; background:rgba(255,255,255,0.12); color:var(--white);
+    border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:6px 10px; max-width:360px;
+  }
+  .mode-pill{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25);
+    border-radius:999px; padding:6px 14px; font-size:13px; font-weight:600; color:var(--white);
+    white-space:nowrap;
+  }
+  .mode-pill.admin-on{ background:var(--gold); color:var(--pitch-dark); border-color:var(--gold); }
+  .subtitle{ font-size:12px; color:rgba(255,255,255,0.65); margin-top:2px; font-weight:500; letter-spacing:0.04em; }
+
+  .tabs{
+    max-width:1000px; margin:18px auto 0 auto; display:flex; gap:4px;
+    overflow-x:auto; padding-bottom:0;
+  }
+  .tab-btn{
+    background:none; border:none; color:rgba(255,255,255,0.65);
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.03em;
+    font-size:13px; font-weight:600; padding:10px 16px; border-bottom:3px solid transparent;
+    white-space:nowrap;
+  }
+  .tab-btn:hover{ color:var(--white); }
+  .tab-btn.active{ color:var(--white); border-bottom-color:var(--gold); }
+
+  /* Body */
+  .container{ max-width:1000px; margin:0 auto; padding:24px 20px 60px 20px; }
+  .section-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .section-head h2{ font-size:20px; color:var(--pitch-dark); }
+
+  .btn{
+    background:var(--white); border:1px solid var(--line); border-radius:6px;
+    padding:9px 16px; font-size:13px; font-weight:600; color:var(--pitch-dark);
+  }
+  .btn:hover{ background:var(--turf-tint); }
+  .btn-primary{ background:var(--pitch); color:var(--white); border-color:var(--pitch); }
+  .btn-primary:hover{ background:var(--pitch-dark); }
+  .btn-gold{ background:var(--gold); color:var(--pitch-dark); border-color:var(--gold); }
+  .btn-gold:hover{ background:var(--gold-dark); color:var(--white); }
+  .btn-danger{ background:var(--white); color:var(--red); border-color:#EFC9C4; }
+  .btn-danger:hover{ background:#FBEAE8; }
+  .btn-small{ padding:6px 10px; font-size:12px; }
+
+  /* Empty state */
+  .empty-state{
+    background:var(--card); border:1px dashed var(--line); border-radius:10px;
+    padding:36px 20px; text-align:center; color:var(--muted);
+  }
+  .empty-state h3{ color:var(--pitch-dark); font-size:16px; margin-bottom:6px; }
+  .empty-state p{ font-size:14px; margin:0 0 14px 0; }
+
+  /* Score tile */
+  .score-tile{
+    background:var(--ink); color:var(--white);
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px;
+    border-radius:5px; padding:5px 10px; display:inline-block; min-width:2ch; text-align:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);
+  }
+
+  /* Fixtures */
+  .match-date-group{ margin-bottom:22px; }
+  .match-date-label{
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line);
+  }
+  .fixture-card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .fixture-teams{ display:flex; align-items:center; gap:14px; flex:1; min-width:220px; }
+  .fixture-team{ font-weight:600; font-size:14.5px; flex:1; }
+  .fixture-team.right{ text-align:right; }
+  .fixture-center{ display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-weight:700; }
+  .vs-label{ font-size:12px; color:var(--muted); font-weight:600; font-family:'Inter',sans-serif; }
+  .fixture-meta{ font-size:12px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+  .status-badge{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
+    padding:3px 9px; border-radius:999px;
+  }
+  .status-scheduled{ background:var(--turf-tint); color:var(--pitch-dark); }
+  .status-completed{ background:#FCEBEB; color:var(--red); }
+  .fixture-actions{ display:flex; gap:6px; }
+  .scorers-strip{
+    width:100%; font-size:12.5px; color:var(--muted); padding-top:8px; margin-top:8px;
+    border-top:1px dashed var(--line);
+  }
+
+  /* Points table */
+  table.points-table{ width:100%; border-collapse:collapse; background:var(--card); border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+  table.points-table th{
+    background:var(--pitch); color:var(--white); font-family:'Oswald',sans-serif;
+    text-transform:uppercase; font-size:11.5px; letter-spacing:0.04em; padding:10px 8px; text-align:center;
+  }
+  table.points-table th:nth-child(2){ text-align:left; }
+  table.points-table td{ padding:10px 8px; text-align:center; font-size:13.5px; border-top:1px solid var(--line); }
+  table.points-table td:nth-child(2){ text-align:left; font-weight:600; }
+  table.points-table tr:nth-child(even) td{ background:var(--turf-tint); }
+  .pts-value{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pitch-dark); }
+  .table-scroll{ overflow-x:auto; }
+
+  /* Top scorers */
+  .scorer-row{
+    display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:12px 16px; margin-bottom:8px;
+  }
+  .rank-badge{
+    width:30px; height:30px; border-radius:50%; background:var(--turf-tint); color:var(--pitch-dark);
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .rank-badge.top1{ background:var(--gold); color:var(--pitch-dark); }
+  .scorer-info{ flex:1; min-width:0; }
+  .scorer-name{ font-weight:600; font-size:14.5px; }
+  .scorer-team{ font-size:12px; color:var(--muted); }
+
+  /* Teams */
+  .team-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+  .team-card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .team-crest{
+    width:40px; height:40px; border-radius:50%; background:var(--pitch); color:var(--white);
+    display:flex; align-items:center; justify-content:center; font-family:'Oswald',sans-serif;
+    font-weight:700; font-size:13px; flex-shrink:0;
+  }
+  .team-card-name{ font-weight:600; font-size:14px; flex:1; }
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(15,35,26,0.55); display:flex; align-items:center;
+    justify-content:center; padding:20px; z-index:100;
+  }
+  .modal-box{
+    background:var(--white); border-radius:12px; padding:22px; max-width:440px; width:100%;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal-box h3{ font-size:17px; color:var(--pitch-dark); margin-bottom:16px; }
+  .form-row{ margin-bottom:12px; }
+  .form-row label{ display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+  .form-row input, .form-row select{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px;
+    font-family:'Inter',sans-serif; background:var(--white);
+  }
+  .form-row-2{ display:flex; gap:10px; }
+  .form-row-2 > div{ flex:1; }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+  .scorer-input-row{ display:flex; gap:6px; margin-bottom:8px; align-items:center; }
+  .scorer-input-row select{ flex:1; }
+  .scorer-input-row input[type=text]{ flex:2; }
+  .scorer-input-row input[type=number]{ width:58px; }
+  .remove-row-btn{
+    background:none; border:none; color:var(--red); font-size:18px; font-weight:700; padding:0 4px; line-height:1;
+  }
+  .add-row-link{ background:none; border:none; color:var(--pitch); font-weight:600; font-size:13px; padding:4px 0; }
+  .error-text{ color:var(--red); font-size:12.5px; margin-top:4px; display:none; }
+  .field-error input, .field-error select{ border-color:var(--red); }
+  .field-error .error-text{ display:block; }
+  .hint-text{ font-size:12px; color:var(--muted); margin-top:10px; }
+
+  #loading-state{ padding:60px 20px; text-align:center; color:var(--muted); font-size:14px; }
+
+  @media (max-width:600px){
+    .tourney-name, .tourney-name-input{ max-width:220px; font-size:17px; }
+    .fixture-teams{ min-width:100%; }
+    .fixture-center{ margin-left:auto; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-state">Loading tournament data…</div>
+<div id="app" style="display:none;">
+  <header class="app-header">
+    <div class="header-top">
+      <div class="brand">
+        <div class="ball-badge">⚽</div>
+        <div style="min-width:0;">
+          <div id="tourney-name-display" class="tourney-name"></div>
+          <div class="subtitle" id="mode-subtitle">Team view · read only</div>
+        </div>
+      </div>
+      <button class="mode-pill" id="mode-toggle-btn" data-action="toggle-admin">Admin mode</button>
+    </div>
+    <nav class="tabs" id="tabs-nav"></nav>
+  </header>
+  <main class="container" id="main-content"></main>
+</div>
+<div id="modal-root"></div>
+
+<script>
+(function(){
+
+  // 2. SUPABASE INITIALIZATION ADDED HERE
+  // Replace these with your actual Supabase Project URL and Anon Key
+  const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+  const supabaseKey = 'YOUR_ANON_KEY';
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  var STORAGE_KEY = 'tournament-state';
+  var state = null;
+  var isAdmin = false;
+  var currentTab = 'fixtures';
+
+  function defaultState(){
+    return {
+      tournamentName: 'My Football Tournament',
+      pin: '',
+      teams: [],
+      fixtures: []
+    };
+  }
+
+  function uid(prefix){
+    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  function escapeHtml(str){
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function initials(name){
+    var parts = String(name).trim().split(/\s+/);
+    var s = parts.map(function(p){ return p[0]; }).join('').toUpperCase();
+    return s.slice(0,3) || '?';
+  }
+
+  async function loadState(){
+    try{
+      var value = window.localStorage.getItem(STORAGE_KEY);
+      if(value){
+        state = JSON.parse(value);
+        if(!state.teams) state.teams = [];
+        state.teams.forEach(function(t){ if(typeof t.group !== 'string') t.group = ''; });
+        if(!state.fixtures) state.fixtures = [];
+        if(typeof state.pin !== 'string') state.pin = '';
+      } else {
+        state = defaultState();
+      }
+    } catch(e){
+      state = defaultState();
+    }
+  }
+
+  async function saveState(){
+    try{
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e){
+      console.error('Storage error', e);
+      openInfoModal("Couldn't save changes in this browser. Your data may not have been saved.");
+    }
+  }
+
+  function teamById(id){
+    return state.teams.find(function(t){ return t.id === id; });
+  }
+
+  function teamName(id){
+    var t = teamById(id);
+    return t ? t.name : 'Unknown team';
+  }
+
+  function fixtureSideName(f, side){
+    var teamId = side === 'A' ? f.teamA : f.teamB;
+    if(teamId) return teamName(teamId);
+    var label = side === 'A' ? f.labelA : f.labelB;
+    return label || 'TBD';
+  }
+
+  var ROUND_LABELS = { group:'Group stage', semi:'Semi final', final:'Grand final' };
+
+  function roundBadgeText(f){
+    if(f.round === 'group' && f.groupTag) return 'Group ' + f.groupTag;
+    return ROUND_LABELS[f.round] || '';
+  }
+
+  function formatDate(dateStr){
+    if(!dateStr) return 'Date TBC';
+    var d = new Date(dateStr + 'T00:00:00');
+    if(isNaN(d)) return dateStr;
+    return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  }
+
+  function formatTime(t){
+    return t || '';
+  }
+
+  /* ---------- Standings & scorers ---------- */
+
+  function computeStandings(teamList){
+    var teams = teamList || state.teams;
+    var stats = {};
+    teams.forEach(function(t){
+      stats[t.id] = { id:t.id, name:t.name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, gd:0, pts:0 };
+    });
+    state.fixtures.forEach(function(f){
+      if(f.status !== 'completed') return;
+      if(!stats[f.teamA] || !stats[f.teamB]) return;
+      var a = stats[f.teamA], b = stats[f.teamB];
+      var sa = f.scoreA, sb = f.scoreB;
+      a.played++; b.played++;
+      a.gf += sa; a.ga += sb;
+      b.gf += sb; b.ga += sa;
+      if(sa > sb){ a.won++; a.pts += 3; b.lost++; }
+      else if(sa < sb){ b.won++; b.pts += 3; a.lost++; }
+      else { a.drawn++; b.drawn++; a.pts += 1; b.pts += 1; }
+    });
+    var list = Object.keys(stats).map(function(k){
+      var s = stats[k]; s.gd = s.gf - s.ga; return s;
+    });
+    list.sort(function(x,y){
+      if(y.pts !== x.pts) return y.pts - x.pts;
+      if(y.gd !== x.gd) return y.gd - x.gd;
+      if(y.gf !== x.gf) return y.gf - x.gf;
+      return x.name.localeCompare(y.name);
+    });
+    return list;
+  }
+
+  function computeTopScorers(){
+    var agg = {};
+    state.fixtures.forEach(function(f){
+      if(f.status !== 'completed' || !Array.isArray(f.scorers)) return;
+      f.scorers.forEach(function(sc){
+        if(!sc.playerName || !sc.playerName.trim()) return;
+        var key = sc.teamId + '::' + sc.playerName.trim().toLowerCase();
+        if(!agg[key]) agg[key] = { playerName: sc.playerName.trim(), teamId: sc.teamId, goals: 0 };
+        agg[key].goals += Number(sc.goals) || 0;
+      });
+    });
+    var list = Object.keys(agg).map(function(k){ return agg[k]; }).filter(function(s){ return s.goals > 0; });
+    list.sort(function(a,b){
+      if(b.goals !== a.goals) return b.goals - a.goals;
+      return a.playerName.localeCompare(b.playerName);
+    });
+    return list;
+  }
+
+  /* ---------- Rendering ---------- */
+
+  function renderShell(){
+    document.getElementById('tourney-name-display').textContent = state.tournamentName || 'My Football Tournament';
+    document.getElementById('mode-subtitle').textContent = isAdmin ? 'Admin mode · full access' : 'Team view · read only';
+    var modeBtn = document.getElementById('mode-toggle-btn');
+    modeBtn.textContent = isAdmin ? 'Exit admin mode' : 'Admin mode';
+    modeBtn.className = 'mode-pill' + (isAdmin ? ' admin-on' : '');
+
+    var tabs = [
+      ['fixtures','Fixtures'],
+      ['points','Points table'],
+      ['scorers','Top scorers'],
+      ['teams','Teams']
+    ];
+    document.getElementById('tabs-nav').innerHTML = tabs.map(function(t){
+      return '<button class="tab-btn' + (currentTab===t[0]?' active':'') + '" data-action="switch-tab" data-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join('');
+  }
+
+  function renderMain(){
+    var el = document.getElementById('main-content');
+    if(currentTab === 'fixtures') el.innerHTML = renderFixturesTab();
+    else if(currentTab === 'points') el.innerHTML = renderPointsTab();
+    else if(currentTab === 'scorers') el.innerHTML = renderScorersTab();
+    else if(currentTab === 'teams') el.innerHTML = renderTeamsTab();
+  }
+
+  function renderAll(){
+    renderShell();
+    renderMain();
+  }
+
+  function renderFixturesTab(){
+    var html = '<div class="section-head"><h2>Fixtures</h2>';
+    if(isAdmin){
+      html += '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+        '<button class="btn" data-action="open-generate-schedule">Generate group stage</button>' +
+        '<button class="btn btn-primary" data-action="open-add-fixture">+ Add fixture</button>' +
+        '</div>';
+    }
+    html += '</div>';
+
+    if(state.fixtures.length === 0){
+      html += '<div class="empty-state"><h3>No fixtures yet</h3><p>' +
+        (isAdmin ? 'Add the first match of the tournament to get started.' : 'The organiser hasn\'t added any matches yet.') +
+        '</p>' + (isAdmin ? '<button class="btn btn-primary" data-action="open-add-fixture">+ Add fixture</button>' : '') + '</div>';
+      return html;
+    }
+
+    var sorted = state.fixtures.slice().sort(function(a,b){
+      var da = (a.date||'9999') + 'T' + (a.time||'00:00');
+      var db = (b.date||'9999') + 'T' + (b.time||'00:00');
+      return da.localeCompare(db);
+    });
+
+    var groups = {};
+    var order = [];
+    sorted.forEach(function(f){
+      var key = f.date || 'Date TBC';
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(f);
+    });
+
+    order.forEach(function(dateKey){
+      html += '<div class="match-date-group"><div class="match-date-label">' + escapeHtml(formatDate(dateKey === 'Date TBC' ? '' : dateKey)) + '</div>';
+      groups[dateKey].forEach(function(f){
+        html += renderFixtureCard(f);
+      });
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function renderFixtureCard(f){
+    var completed = f.status === 'completed';
+    var pending = !f.teamA || !f.teamB;
+    var scorersHtml = '';
+    if(completed && Array.isArray(f.scorers) && f.scorers.length){
+      var parts = f.scorers.filter(function(s){ return s.playerName && s.playerName.trim(); }).map(function(s){
+        return escapeHtml(s.playerName) + ' (' + escapeHtml(teamName(s.teamId)) + ')' + (s.goals > 1 ? ' x' + s.goals : '');
+      });
+      if(parts.length) scorersHtml = '<div class="scorers-strip"><strong>Scorers:</strong> ' + parts.join(', ') + '</div>';
+    }
+    var center = completed
+      ? '<span class="score-tile">' + f.scoreA + '</span><span style="color:var(--muted);">–</span><span class="score-tile">' + f.scoreB + '</span>'
+      : '<span class="vs-label">vs</span>';
+
+    var actions = '';
+    if(isAdmin){
+      if(pending){
+        actions = '<div class="fixture-actions">' +
+          '<button class="btn btn-small btn-gold" data-action="open-assign-teams" data-id="' + f.id + '">Assign teams</button>' +
+          '<button class="btn btn-small btn-danger" data-action="delete-fixture" data-id="' + f.id + '">Delete</button>' +
+          '</div>';
+      } else {
+        actions = '<div class="fixture-actions">' +
+          '<button class="btn btn-small btn-gold" data-action="open-result" data-id="' + f.id + '">' + (completed ? 'Edit result' : 'Enter result') + '</button>' +
+          '<button class="btn btn-small btn-danger" data-action="delete-fixture" data-id="' + f.id + '">Delete</button>' +
+          '</div>';
+      }
+    }
+
+    var roundBadge = roundBadgeText(f);
+
+    return '<div class="fixture-card">' +
+      '<div class="fixture-teams">' +
+        '<div class="fixture-team">' + escapeHtml(fixtureSideName(f,'A')) + '</div>' +
+        '<div class="fixture-center">' + center + '</div>' +
+        '<div class="fixture-team right">' + escapeHtml(fixtureSideName(f,'B')) + '</div>' +
+      '</div>' +
+      '<div class="fixture-meta">' +
+        (roundBadge ? '<span class="status-badge status-scheduled">' + escapeHtml(roundBadge) + '</span>' : '') +
+        '<span class="status-badge ' + (completed ? 'status-completed' : 'status-scheduled') + '">' + (completed ? 'Full time' : 'Scheduled') + '</span>' +
+        (f.time ? '<span>' + escapeHtml(formatTime(f.time)) + '</span>' : '') +
+        (f.venue ? '<span>' + escapeHtml(f.venue) + '</span>' : '') +
+      '</div>' +
+      actions +
+      scorersHtml +
+      '</div>';
+  }
+
+  function pointsTableHtml(standings){
+    var html = '<div class="table-scroll"><table class="points-table"><thead><tr>' +
+      '<th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th>' +
+      '</tr></thead><tbody>';
+    standings.forEach(function(s, idx){
+      html += '<tr><td>' + (idx+1) + '</td><td>' + escapeHtml(s.name) + '</td><td>' + s.played + '</td><td>' + s.won +
+        '</td><td>' + s.drawn + '</td><td>' + s.lost + '</td><td>' + s.gf + '</td><td>' + s.ga + '</td><td>' +
+        (s.gd > 0 ? '+' + s.gd : s.gd) + '</td><td class="pts-value">' + s.pts + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderPointsTab(){
+    var html = '<div class="section-head"><h2>Points table</h2></div>';
+    if(state.teams.length === 0){
+      html += '<div class="empty-state"><h3>No teams yet</h3><p>Add teams first, then the table fills in as matches are played.</p></div>';
+      return html;
+    }
+    var groupATeams = state.teams.filter(function(t){ return t.group === 'A'; });
+    var groupBTeams = state.teams.filter(function(t){ return t.group === 'B'; });
+    if(groupATeams.length && groupBTeams.length){
+      html += '<div class="match-date-label">Group A</div>' + pointsTableHtml(computeStandings(groupATeams));
+      html += '<div class="match-date-label" style="margin-top:20px;">Group B</div>' + pointsTableHtml(computeStandings(groupBTeams));
+      var ungrouped = state.teams.filter(function(t){ return t.group !== 'A' && t.group !== 'B'; });
+      if(ungrouped.length){
+        html += '<div class="match-date-label" style="margin-top:20px;">Ungrouped teams</div>' + pointsTableHtml(computeStandings(ungrouped));
+      }
+    } else {
+      html += pointsTableHtml(computeStandings(state.teams));
+    }
+    return html;
+  }
+
+  function renderScorersTab(){
+    var html = '<div class="section-head"><h2>Top scorers</h2></div>';
+    var list = computeTopScorers();
+    if(list.length === 0){
+      html += '<div class="empty-state"><h3>No goals recorded yet</h3><p>Goal scorers appear here once match results are entered.</p></div>';
+      return html;
+    }
+    list.forEach(function(s, idx){
+      html += '<div class="scorer-row">' +
+        '<div class="rank-badge' + (idx===0?' top1':'') + '">' + (idx+1) + '</div>' +
+        '<div class="scorer-info"><div class="scorer-name">' + escapeHtml(s.playerName) + '</div><div class="scorer-team">' + escapeHtml(teamName(s.teamId)) + '</div></div>' +
+        '<div class="score-tile">' + s.goals + '</div>' +
+        '</div>';
+    });
+    return html;
+  }
+
+  function renderTeamsTab(){
+    var html = '<div class="section-head"><h2>Teams</h2>';
+    if(isAdmin) html += '<button class="btn btn-primary" data-action="open-add-team">+ Add team</button>';
+    html += '</div>';
+    if(state.teams.length === 0){
+      html += '<div class="empty-state"><h3>No teams yet</h3><p>' +
+        (isAdmin ? 'Add the teams taking part in the tournament.' : 'The organiser hasn\'t added any teams yet.') +
+        '</p>' + (isAdmin ? '<button class="btn btn-primary" data-action="open-add-team">+ Add team</button>' : '') + '</div>';
+      return html;
+    }
+    html += '<div class="team-grid">';
+    state.teams.forEach(function(t){
+      html += '<div class="team-card">' +
+        '<div class="team-crest">' + escapeHtml(initials(t.name)) + '</div>' +
+        '<div class="team-card-name">' + escapeHtml(t.name) +
+          (t.group ? '<div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;">Group ' + escapeHtml(t.group) + '</div>' : '') +
+        '</div>' +
+        (isAdmin ? '<div style="display:flex; gap:6px;">' +
+          '<button class="btn btn-small" data-action="edit-team" data-id="' + t.id + '">Edit</button>' +
+          '<button class="btn btn-small btn-danger" data-action="delete-team" data-id="' + t.id + '">Delete</button>' +
+          '</div>' : '') +
+        '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------- Modals ---------- */
+
+  function closeModal(){
+    document.getElementById('modal-root').innerHTML = '';
+  }
+
+  function openModalHtml(html){
+    document.getElementById('modal-root').innerHTML =
+      '<div class="modal-overlay" data-action="close-modal-overlay"><div class="modal-box" id="modal-box"></div></div>';
+    document.getElementById('modal-box').innerHTML = html;
+  }
+
+  var pendingConfirmCallback = null;
+
+  function openConfirmModal(message, confirmLabel, onConfirm){
+    pendingConfirmCallback = onConfirm;
+    var html = '<h3>Are you sure?</h3>' +
+      '<p style="font-size:14px; color:var(--ink); margin:0 0 18px 0;">' + escapeHtml(message) + '</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-danger" style="background:var(--red); color:var(--white); border-color:var(--red);" data-action="confirm-yes">' + escapeHtml(confirmLabel || 'Confirm') + '</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function openInfoModal(message){
+    var html = '<h3>Heads up</h3>' +
+      '<p style="font-size:14px; color:var(--ink); white-space:pre-line; margin:0 0 18px 0;">' + escapeHtml(message) + '</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn btn-primary" data-action="close-modal">OK</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function openPinModal(){
+    var settingNew = !state.pin;
+    var html = '<h3>' + (settingNew ? 'Set an admin PIN' : 'Enter admin PIN') + '</h3>' +
+      '<div class="form-row" id="pin-row">' +
+      '<label>' + (settingNew ? 'Choose a PIN organisers will use to unlock editing' : 'PIN') + '</label>' +
+      '<input type="password" id="pin-input" inputmode="numeric" placeholder="e.g. 1234" />' +
+      '<div class="error-text" id="pin-error">That PIN didn\'t match. Try again.</div>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-pin">' + (settingNew ? 'Set PIN' : 'Unlock') + '</button>' +
+      '</div>';
+    openModalHtml(html);
+    setTimeout(function(){ var i = document.getElementById('pin-input'); if(i) i.focus(); }, 30);
+  }
+
+  function submitPin(){
+    var val = (document.getElementById('pin-input').value || '').trim();
+    var row = document.getElementById('pin-row');
+    if(!val){
+      row.classList.add('field-error');
+      document.getElementById('pin-error').textContent = 'Enter a PIN first.';
+      return;
+    }
+    if(!state.pin){
+      state.pin = val;
+      saveState();
+      isAdmin = true;
+      closeModal();
+      renderAll();
+      return;
+    }
+    if(val === state.pin){
+      isAdmin = true;
+      closeModal();
+      renderAll();
+    } else {
+      row.classList.add('field-error');
+      document.getElementById('pin-error').textContent = "That PIN didn't match. Try again.";
+    }
+  }
+
+  function openAddTeamModal(){
+    var html = '<h3>Add a team</h3>' +
+      '<div class="form-row" id="team-name-row">' +
+      '<label>Team name</label>' +
+      '<input type="text" id="team-name-input" placeholder="e.g. Riverside FC" />' +
+      '<div class="error-text">Enter a team name.</div>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label>Group</label>' +
+      '<select id="team-group-input">' +
+        '<option value="">Unassigned</option>' +
+        '<option value="A">Group A</option>' +
+        '<option value="B">Group B</option>' +
+      '</select>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-add-team">Add team</button>' +
+      '</div>';
+    openModalHtml(html);
+    setTimeout(function(){ var i = document.getElementById('team-name-input'); if(i) i.focus(); }, 30);
+  }
+
+  function submitAddTeam(){
+    var input = document.getElementById('team-name-input');
+    var name = input.value.trim();
+    var group = document.getElementById('team-group-input').value;
+    var row = document.getElementById('team-name-row');
+    if(!name){
+      row.classList.add('field-error');
+      return;
+    }
+    var dup = state.teams.some(function(t){ return t.name.toLowerCase() === name.toLowerCase(); });
+    if(dup){
+      row.classList.add('field-error');
+      row.querySelector('.error-text').textContent = 'A team with that name already exists.';
+      return;
+    }
+    state.teams.push({ id: uid('team'), name: name, group: group });
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  function openEditTeamModal(teamId){
+    var t = teamById(teamId);
+    if(!t) return;
+    var g = t.group || '';
+    var html = '<h3>Edit team</h3>' +
+      '<div class="form-row" id="team-name-row">' +
+      '<label>Team name</label>' +
+      '<input type="text" id="team-name-input" value="' + escapeHtml(t.name) + '" />' +
+      '<div class="error-text">Enter a team name.</div>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label>Group</label>' +
+      '<select id="team-group-input">' +
+        '<option value=""' + (g===''?' selected':'') + '>Unassigned</option>' +
+        '<option value="A"' + (g==='A'?' selected':'') + '>Group A</option>' +
+        '<option value="B"' + (g==='B'?' selected':'') + '>Group B</option>' +
+      '</select>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-edit-team" data-id="' + t.id + '">Save changes</button>' +
+      '</div>';
+    openModalHtml(html);
+    setTimeout(function(){ var i = document.getElementById('team-name-input'); if(i){ i.focus(); i.select(); } }, 30);
+  }
+
+  function submitEditTeam(teamId){
+    var t = teamById(teamId);
+    if(!t) return;
+    var input = document.getElementById('team-name-input');
+    var name = input.value.trim();
+    var group = document.getElementById('team-group-input').value;
+    var row = document.getElementById('team-name-row');
+    row.classList.remove('field-error');
+    if(!name){
+      row.classList.add('field-error');
+      row.querySelector('.error-text').textContent = 'Enter a team name.';
+      return;
+    }
+    var dup = state.teams.some(function(x){ return x.id !== teamId && x.name.toLowerCase() === name.toLowerCase(); });
+    if(dup){
+      row.classList.add('field-error');
+      row.querySelector('.error-text').textContent = 'A team with that name already exists.';
+      return;
+    }
+    t.name = name;
+    t.group = group;
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  function deleteTeam(teamId){
+    var used = state.fixtures.some(function(f){ return f.teamA === teamId || f.teamB === teamId; });
+    if(used){
+      openInfoModal("This team is part of one or more fixtures. Remove those fixtures first.");
+      return;
+    }
+    var t = teamById(teamId);
+    if(!t) return;
+    openConfirmModal('Delete ' + t.name + "? This can't be undone.", 'Delete team', function(){
+      state.teams = state.teams.filter(function(x){ return x.id !== teamId; });
+      saveState();
+      renderAll();
+    });
+  }
+
+  function openAddFixtureModal(){
+    if(state.teams.length < 2){
+      openInfoModal('Add at least two teams before creating a fixture.');
+      return;
+    }
+    var options = state.teams.map(function(t){ return '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('');
+    var html = '<h3>Add a fixture</h3>' +
+      '<div class="form-row-2">' +
+      '<div class="form-row" id="teamA-row"><label>Team A</label><select id="fixture-teamA"><option value="">Select team</option>' + options + '</select><div class="error-text">Pick a team.</div></div>' +
+      '<div class="form-row" id="teamB-row"><label>Team B</label><select id="fixture-teamB"><option value="">Select team</option>' + options + '</select><div class="error-text">Pick a different team.</div></div>' +
+      '</div>' +
+      '<div class="form-row-2">' +
+      '<div class="form-row"><label>Date</label><input type="date" id="fixture-date" /></div>' +
+      '<div class="form-row"><label>Time</label><input type="time" id="fixture-time" /></div>' +
+      '</div>' +
+      '<div class="form-row"><label>Venue</label><input type="text" id="fixture-venue" placeholder="e.g. Community Ground" /></div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-add-fixture">Add fixture</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function submitAddFixture(){
+    var a = document.getElementById('fixture-teamA').value;
+    var b = document.getElementById('fixture-teamB').value;
+    var rowA = document.getElementById('teamA-row');
+    var rowB = document.getElementById('teamB-row');
+    rowA.classList.remove('field-error');
+    rowB.classList.remove('field-error');
+    var ok = true;
+    if(!a){ rowA.classList.add('field-error'); ok = false; }
+    if(!b){ rowB.classList.add('field-error'); ok = false; }
+    if(a && b && a === b){
+      rowB.classList.add('field-error');
+      rowB.querySelector('.error-text').textContent = 'Team B must be different from Team A.';
+      ok = false;
+    }
+    if(!ok) return;
+    var date = document.getElementById('fixture-date').value;
+    var time = document.getElementById('fixture-time').value;
+    var venue = document.getElementById('fixture-venue').value.trim();
+    state.fixtures.push({
+      id: uid('fx'), teamA:a, teamB:b, date:date, time:time, venue:venue,
+      status:'scheduled', scoreA:null, scoreB:null, scorers:[]
+    });
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  function deleteFixture(fixtureId){
+    openConfirmModal("Delete this fixture? This can't be undone.", 'Delete fixture', function(){
+      state.fixtures = state.fixtures.filter(function(f){ return f.id !== fixtureId; });
+      saveState();
+      renderAll();
+    });
+  }
+
+  /* ---------- Group stage schedule generator ---------- */
+
+  var GROUP_PAIRS = [[0,1],[2,3],[4,0],[1,2],[3,4],[0,2],[1,3],[2,4],[0,3],[1,4]];
+
+  function timeForSlot(n){
+    var totalMin = (n - 1) * 30;
+    var mins = (10 * 60 + totalMin) % (24 * 60);
+    var hh = Math.floor(mins / 60);
+    var mm = mins % 60;
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  function openGenerateScheduleModal(){
+    var groupATeams = state.teams.filter(function(t){ return t.group === 'A'; });
+    var groupBTeams = state.teams.filter(function(t){ return t.group === 'B'; });
+    if(groupATeams.length !== 5 || groupBTeams.length !== 5){
+      openInfoModal('This generates the 5-a-side, 2-group schedule. Assign exactly 5 teams to Group A and 5 to Group B first (edit each team and pick a group), then try again.\n\nGroup A currently has ' + groupATeams.length + ', Group B has ' + groupBTeams.length + '.');
+      return;
+    }
+    var html = '<h3>Generate group stage</h3>' +
+      '<p style="font-size:13.5px; color:var(--muted); margin:-8px 0 14px 0;">Creates 20 group matches plus placeholder semi-finals and a final, on a single matchday from 10:00 AM, 30 minutes apart.</p>' +
+      '<div class="form-row" id="gen-date-row"><label>Match date</label><input type="date" id="gen-date-input" /><div class="error-text">Pick a date.</div></div>' +
+      '<div class="form-row"><label>Venue (optional, applied to all matches)</label><input type="text" id="gen-venue-input" placeholder="e.g. Community Ground" /></div>' +
+      '<div class="hint-text">Semi-final and final teams are left as "TBD" until you assign them once the group stage results are known.</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-generate-schedule">Generate schedule</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function submitGenerateSchedule(){
+    var dateInput = document.getElementById('gen-date-input');
+    var dateRow = document.getElementById('gen-date-row');
+    dateRow.classList.remove('field-error');
+    if(!dateInput.value){
+      dateRow.classList.add('field-error');
+      return;
+    }
+    var date = dateInput.value;
+    var venue = document.getElementById('gen-venue-input').value.trim();
+    var groupATeams = state.teams.filter(function(t){ return t.group === 'A'; });
+    var groupBTeams = state.teams.filter(function(t){ return t.group === 'B'; });
+    if(groupATeams.length !== 5 || groupBTeams.length !== 5){
+      openInfoModal('Group assignments changed. Make sure exactly 5 teams are in each group and try again.');
+      return;
+    }
+    if(state.fixtures.length > 0){
+      openConfirmModal('This adds 23 new fixtures alongside your existing ' + state.fixtures.length + '. Continue?', 'Generate schedule', function(){
+        doGenerateSchedule(date, venue, groupATeams, groupBTeams);
+      });
+    } else {
+      doGenerateSchedule(date, venue, groupATeams, groupBTeams);
+    }
+  }
+
+  function doGenerateSchedule(date, venue, groupATeams, groupBTeams){
+    var newFixtures = [];
+    GROUP_PAIRS.forEach(function(p, i){
+      newFixtures.push({
+        id: uid('fx'), teamA: groupATeams[p[0]].id, teamB: groupATeams[p[1]].id,
+        date: date, time: timeForSlot(2*i + 1), venue: venue,
+        status: 'scheduled', scoreA: null, scoreB: null, scorers: [],
+        round: 'group', groupTag: 'A', slot: 2*i + 1
+      });
+      newFixtures.push({
+        id: uid('fx'), teamA: groupBTeams[p[0]].id, teamB: groupBTeams[p[1]].id,
+        date: date, time: timeForSlot(2*i + 2), venue: venue,
+        status: 'scheduled', scoreA: null, scoreB: null, scorers: [],
+        round: 'group', groupTag: 'B', slot: 2*i + 2
+      });
+    });
+    newFixtures.push({
+      id: uid('fx'), teamA: null, teamB: null, labelA: 'Group A winner', labelB: 'Group B runner-up',
+      date: date, time: timeForSlot(21), venue: venue,
+      status: 'scheduled', scoreA: null, scoreB: null, scorers: [], round: 'semi', slot: 21
+    });
+    newFixtures.push({
+      id: uid('fx'), teamA: null, teamB: null, labelA: 'Group B winner', labelB: 'Group A runner-up',
+      date: date, time: timeForSlot(22), venue: venue,
+      status: 'scheduled', scoreA: null, scoreB: null, scorers: [], round: 'semi', slot: 22
+    });
+    newFixtures.push({
+      id: uid('fx'), teamA: null, teamB: null, labelA: 'Semi-final 1 winner', labelB: 'Semi-final 2 winner',
+      date: date, time: timeForSlot(23), venue: venue,
+      status: 'scheduled', scoreA: null, scoreB: null, scorers: [], round: 'final', slot: 23
+    });
+
+    state.fixtures = state.fixtures.concat(newFixtures);
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  function openAssignTeamsModal(fixtureId){
+    var f = state.fixtures.find(function(x){ return x.id === fixtureId; });
+    if(!f) return;
+    var options = state.teams.map(function(t){ return '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('');
+    var html = '<h3>Assign teams</h3>' +
+      '<p style="font-size:13.5px; color:var(--muted); margin:-8px 0 14px 0;">' + escapeHtml(roundBadgeText(f)) + '</p>' +
+      '<div class="form-row-2">' +
+      '<div class="form-row" id="assignA-row"><label>' + escapeHtml(f.labelA || 'Team A') + '</label><select id="assign-teamA"><option value="">Select team</option>' + options + '</select><div class="error-text">Pick a team.</div></div>' +
+      '<div class="form-row" id="assignB-row"><label>' + escapeHtml(f.labelB || 'Team B') + '</label><select id="assign-teamB"><option value="">Select team</option>' + options + '</select><div class="error-text">Pick a different team.</div></div>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-assign-teams" data-id="' + f.id + '">Save</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function submitAssignTeams(fixtureId){
+    var f = state.fixtures.find(function(x){ return x.id === fixtureId; });
+    if(!f) return;
+    var a = document.getElementById('assign-teamA').value;
+    var b = document.getElementById('assign-teamB').value;
+    var rowA = document.getElementById('assignA-row');
+    var rowB = document.getElementById('assignB-row');
+    rowA.classList.remove('field-error');
+    rowB.classList.remove('field-error');
+    var ok = true;
+    if(!a){ rowA.classList.add('field-error'); ok = false; }
+    if(!b){ rowB.classList.add('field-error'); ok = false; }
+    if(a && b && a === b){
+      rowB.classList.add('field-error');
+      rowB.querySelector('.error-text').textContent = 'Pick a different team from Team A.';
+      ok = false;
+    }
+    if(!ok) return;
+    f.teamA = a;
+    f.teamB = b;
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  var scorerRowCount = 0;
+
+  function scorerRowHtml(idx, teamAId, teamBId, teamAName, teamBName, existing){
+    var pname = existing ? existing.playerName : '';
+    var pteam = existing ? existing.teamId : teamAId;
+    var pgoals = existing ? existing.goals : 1;
+    return '<div class="scorer-input-row" data-scorer-row="' + idx + '">' +
+      '<select data-scorer-team="' + idx + '">' +
+        '<option value="' + teamAId + '"' + (pteam===teamAId?' selected':'') + '>' + escapeHtml(teamAName) + '</option>' +
+        '<option value="' + teamBId + '"' + (pteam===teamBId?' selected':'') + '>' + escapeHtml(teamBName) + '</option>' +
+      '</select>' +
+      '<input type="text" placeholder="Player name" value="' + escapeHtml(pname) + '" data-scorer-name="' + idx + '" />' +
+      '<input type="number" min="1" value="' + pgoals + '" data-scorer-goals="' + idx + '" />' +
+      '<button type="button" class="remove-row-btn" data-action="remove-scorer-row" data-row="' + idx + '" aria-label="Remove row">×</button>' +
+      '</div>';
+  }
+
+  function openResultModal(fixtureId){
+    var f = state.fixtures.find(function(x){ return x.id === fixtureId; });
+    if(!f) return;
+    var teamAName = teamName(f.teamA), teamBName = teamName(f.teamB);
+    scorerRowCount = 0;
+    var existingScorers = (f.scorers && f.scorers.length) ? f.scorers : [];
+    var rowsHtml = existingScorers.map(function(sc){
+      var idx = scorerRowCount++;
+      return scorerRowHtml(idx, f.teamA, f.teamB, teamAName, teamBName, sc);
+    }).join('');
+
+    var html = '<h3>Match result</h3>' +
+      '<p style="font-size:13.5px; color:var(--muted); margin:-8px 0 14px 0;">' + escapeHtml(teamAName) + ' vs ' + escapeHtml(teamBName) + '</p>' +
+      '<div class="form-row-2">' +
+      '<div class="form-row" id="scoreA-row"><label>' + escapeHtml(teamAName) + ' score</label><input type="number" min="0" id="score-a" value="' + (f.scoreA != null ? f.scoreA : '') + '" /><div class="error-text">Enter a score.</div></div>' +
+      '<div class="form-row" id="scoreB-row"><label>' + escapeHtml(teamBName) + ' score</label><input type="number" min="0" id="score-b" value="' + (f.scoreB != null ? f.scoreB : '') + '" /><div class="error-text">Enter a score.</div></div>' +
+      '</div>' +
+      '<div class="form-row"><label>Goal scorers (optional)</label>' +
+      '<div id="scorer-rows-container">' + rowsHtml + '</div>' +
+      '<button type="button" class="add-row-link" data-action="add-scorer-row" data-teama-id="' + f.teamA + '" data-teamb-id="' + f.teamB + '" data-teama-name="' + escapeHtml(teamAName) + '" data-teamb-name="' + escapeHtml(teamBName) + '">+ Add scorer</button>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button class="btn" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="submit-result" data-id="' + f.id + '">Save result</button>' +
+      '</div>';
+    openModalHtml(html);
+  }
+
+  function addScorerRow(teamAId, teamBId, teamAName, teamBName){
+    var idx = scorerRowCount++;
+    var container = document.getElementById('scorer-rows-container');
+    var div = document.createElement('div');
+    div.innerHTML = scorerRowHtml(idx, teamAId, teamBId, teamAName, teamBName, null);
+    container.appendChild(div.firstChild);
+  }
+
+  function removeScorerRow(idx){
+    var row = document.querySelector('[data-scorer-row="' + idx + '"]');
+    if(row) row.remove();
+  }
+
+  function submitResult(fixtureId){
+    var f = state.fixtures.find(function(x){ return x.id === fixtureId; });
+    if(!f) return;
+    var aInput = document.getElementById('score-a');
+    var bInput = document.getElementById('score-b');
+    var aRow = document.getElementById('scoreA-row');
+    var bRow = document.getElementById('scoreB-row');
+    aRow.classList.remove('field-error'); bRow.classList.remove('field-error');
+    var ok = true;
+    if(aInput.value === '' || Number(aInput.value) < 0){ aRow.classList.add('field-error'); ok = false; }
+    if(bInput.value === '' || Number(bInput.value) < 0){ bRow.classList.add('field-error'); ok = false; }
+    if(!ok) return;
+
+    var scorers = [];
+    document.querySelectorAll('[data-scorer-row]').forEach(function(rowEl){
+      var idx = rowEl.getAttribute('data-scorer-row');
+      var teamSel = rowEl.querySelector('[data-scorer-team="' + idx + '"]');
+      var nameInp = rowEl.querySelector('[data-scorer-name="' + idx + '"]');
+      var goalsInp = rowEl.querySelector('[data-scorer-goals="' + idx + '"]');
+      var pname = nameInp.value.trim();
+      if(pname){
+        scorers.push({ teamId: teamSel.value, playerName: pname, goals: Math.max(1, Number(goalsInp.value) || 1) });
+      }
+    });
+
+    f.scoreA = Number(aInput.value);
+    f.scoreB = Number(bInput.value);
+    f.scorers = scorers;
+    f.status = 'completed';
+    saveState();
+    closeModal();
+    renderAll();
+  }
+
+  function openTournamentNameEdit(){
+    var display = document.getElementById('tourney-name-display');
+    var input = document.createElement('input');
+    input.className = 'tourney-name-input';
+    input.value = state.tournamentName;
+    input.setAttribute('aria-label', 'Tournament name');
+    display.replaceWith(input);
+    input.focus();
+    input.select();
+    function commit(){
+      var val = input.value.trim() || 'My Football Tournament';
+      state.tournamentName = val;
+      saveState();
+      renderAll();
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ input.blur(); }
+      if(e.key === 'Escape'){ input.value = state.tournamentName; input.blur(); }
+    });
+  }
+
+  /* ---------- Event delegation ---------- */
+
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.getAttribute && e.target.getAttribute('data-action') === 'close-modal-overlay'){
+      closeModal();
+      return;
+    }
+
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.getAttribute('data-action');
+    if(action === 'close-modal-overlay') return;
+
+    if(action === 'switch-tab'){
+      currentTab = el.getAttribute('data-tab');
+      renderAll();
+    } else if(action === 'toggle-admin'){
+      if(isAdmin){
+        isAdmin = false;
+        renderAll();
+      } else {
+        openPinModal();
+      }
+    } else if(action === 'close-modal' || action === 'close-modal-overlay'){
+      closeModal();
+    } else if(action === 'submit-pin'){
+      submitPin();
+    } else if(action === 'confirm-yes'){
+      var cb = pendingConfirmCallback;
+      pendingConfirmCallback = null;
+      closeModal();
+      if(cb) cb();
+    } else if(action === 'open-add-team'){
+      openAddTeamModal();
+    } else if(action === 'submit-add-team'){
+      submitAddTeam();
+    } else if(action === 'edit-team'){
+      openEditTeamModal(el.getAttribute('data-id'));
+    } else if(action === 'submit-edit-team'){
+      submitEditTeam(el.getAttribute('data-id'));
+    } else if(action === 'delete-team'){
+      deleteTeam(el.getAttribute('data-id'));
+    } else if(action === 'open-add-fixture'){
+      openAddFixtureModal();
+    } else if(action === 'submit-add-fixture'){
+      submitAddFixture();
+    } else if(action === 'open-generate-schedule'){
+      openGenerateScheduleModal();
+    } else if(action === 'submit-generate-schedule'){
+      submitGenerateSchedule();
+    } else if(action === 'open-assign-teams'){
+      openAssignTeamsModal(el.getAttribute('data-id'));
+    } else if(action === 'submit-assign-teams'){
+      submitAssignTeams(el.getAttribute('data-id'));
+    } else if(action === 'delete-fixture'){
+      deleteFixture(el.getAttribute('data-id'));
+    } else if(action === 'open-result'){
+      openResultModal(el.getAttribute('data-id'));
+    } else if(action === 'submit-result'){
+      submitResult(el.getAttribute('data-id'));
+    } else if(action === 'add-scorer-row'){
+      addScorerRow(el.getAttribute('data-teama-id'), el.getAttribute('data-teamb-id'), el.getAttribute('data-teama-name'), el.getAttribute('data-teamb-name'));
+    } else if(action === 'remove-scorer-row'){
+      removeScorerRow(el.getAttribute('data-row'));
+    } else if(action === 'edit-tourney-name'){
+      openTournamentNameEdit();
+    }
+  });
+
+  document.addEventListener('dblclick', function(e){
+    if(e.target && e.target.id === 'tourney-name-display' && isAdmin){
+      openTournamentNameEdit();
+    }
+  });
+
+  /* ---------- Init ---------- */
+
+  async function init(){
+    await loadState();
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
